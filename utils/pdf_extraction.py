@@ -24,11 +24,12 @@ def parse_chilean_currency(value):
         return None
 
 
-def extract_data_from_pdf(pdf_file, processed_orders):
+def extract_data_from_pdf(pdf_file, processed_orders, user_id=None):
     """
     Extrae datos relevantes de un archivo PDF y valida duplicidad de órdenes de compra.
     :param pdf_file: Archivo PDF a procesar.
     :param processed_orders: Conjunto de órdenes de compra ya procesadas.
+    :param user_id: Identificador del usuario que está procesando el archivo (para evitar duplicados solo entre sus archivos)
     :return: Diccionario con los datos extraídos o None si es duplicada.
     """
     try:
@@ -82,13 +83,19 @@ def extract_data_from_pdf(pdf_file, processed_orders):
 
         # Validar duplicidad de la Orden de Compra
         order_number = extracted_data.get("Orden de Compra")
-        if order_number in processed_orders:
-            print(f"Advertencia: La Orden de Compra '{order_number}' ya fue procesada. Ignorando archivo.")
+        
+        # Crear clave única que combine orden y usuario (si se proporciona)
+        order_key = order_number
+        if user_id:
+            order_key = f"{user_id}_{order_number}"
+        
+        if order_key in processed_orders:
+            print(f"Advertencia: La Orden de Compra '{order_number}' ya fue procesada por el usuario {user_id}. Ignorando archivo.")
             return None  # Ignorar archivo si la orden ya fue procesada
 
         # Agregar la Orden de Compra al conjunto de procesadas
-        if order_number:
-            processed_orders.add(order_number)
+        if order_key:
+            processed_orders.add(order_key)
 
         # Convertir Fecha Envío OC al formato corto
         if extracted_data["Fecha Envío OC"]:
@@ -102,6 +109,10 @@ def extract_data_from_pdf(pdf_file, processed_orders):
         # Convertir Total a número en formato flotante
         if extracted_data["Total"]:
             extracted_data["Total"] = parse_chilean_currency(extracted_data["Total"])
+            
+        # Añadir información del usuario
+        if user_id:
+            extracted_data["Usuario"] = user_id
 
         return extracted_data
 

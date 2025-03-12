@@ -7,7 +7,10 @@ from io import BytesIO
 import numpy as np
 from datetime import datetime
 
-# Archivos de entrada
+# Importar funciones de gestión de usuarios
+from user_management import get_user_data_path
+
+# Archivos de entrada - Serán modificadas en auth_app.py para cada usuario
 ORDENES_FILE = "data/control_de_ordenes_de_compra.xlsx"
 GASTOS_FILE = "data/control_de_gasto_de_licitaciones.xlsx"
 CONTROL_SUMMARY_FILE = "data/resumen_control_licitaciones.json"
@@ -20,6 +23,11 @@ def cargar_datos():
     Returns:
         tuple: Tupla con (ordenes_df, gastos_df, resumenes, certificados, licitaciones_disponibles)
     """
+    # Verificar si hay un usuario autenticado
+    if "user" not in st.session_state or not st.session_state.user:
+        st.error("Debes iniciar sesión para acceder a esta funcionalidad.")
+        return None, None, None, None, []
+    
     # Validar si ambos archivos existen
     if not (os.path.exists(ORDENES_FILE) and os.path.exists(GASTOS_FILE)):
         return None, None, None, None, []
@@ -296,6 +304,14 @@ def mostrar_tabla_certificados(ordenes_df, certificados, titulo="Órdenes de Com
     ordenes_df['certificado'] = ordenes_df['certificado'].astype(str).str.upper()
     ordenes_certificadas = ordenes_df[ordenes_df['certificado'] == 'SÍ']
     
+    # Filtrar por usuario actual si existe la columna
+    current_user = None
+    if "user" in st.session_state and st.session_state.user:
+        current_user = st.session_state.user["username"]
+        
+        if "usuario" in ordenes_certificadas.columns and current_user:
+            ordenes_certificadas = ordenes_certificadas[ordenes_certificadas["usuario"] == current_user]
+    
     if ordenes_certificadas.empty:
         st.info("No se encontraron órdenes con certificado generado.")
         return
@@ -316,8 +332,11 @@ def mostrar_tabla_certificados(ordenes_df, certificados, titulo="Órdenes de Com
     # Mostrar tabla
     st.dataframe(ordenes_certificadas[columnas_existentes])
     
-    # Mostrar registro de certificados si existe
+    # Filtrar certificados por usuario actual
     if certificados:
+        if current_user and current_user != "admin":  # Para administradores, mostrar todos
+            certificados = [cert for cert in certificados if cert.get("usuario") == current_user]
+        
         st.subheader("Registro de Certificados Generados")
         
         # Crear DataFrame con la información de los certificados
@@ -382,6 +401,20 @@ def generar_archivo_control_certificados(ordenes_certificadas, gastos_df):
 
 def pagina_4():
     st.title("Página 4: Control de Gastos y Certificados Generados")
+    
+    # Verificar si hay un usuario autenticado
+    if "user" not in st.session_state or not st.session_state.user:
+        st.error("Debes iniciar sesión para acceder a esta funcionalidad.")
+        return
+    
+    # Obtener ID del usuario actual
+    current_user = st.session_state.user["username"]
+    
+    # Obtener ruta de datos del usuario
+    user_data_path = get_user_data_path(current_user)
+    
+    # Mostrar información del usuario
+    st.info(f"Usuario actual: {current_user} ({st.session_state.user['role']})")
     
     # Cargar datos
     ordenes_df, gastos_df, resumenes, certificados, licitaciones_disponibles = cargar_datos()

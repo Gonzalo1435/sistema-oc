@@ -1,0 +1,15 @@
+[
+  {
+    "orden_de_compra": "1057461-1099-SE24",
+    "proveedor": "SERVICIOS DE BIOINGENIERIA LIMITADA RUT",
+    "monto": 1636845.0,
+    "tipo_operacion": "Mantenimiento",
+    "es_contrato": "Sí",
+    "es_prorroga": "No",
+    "funcionario": "CESAR GONZALEZ V ",
+    "cargo_funcionario": "JEFE DE OPERACIONES",
+    "licitacion": "1057461-5-LE23",
+    "usuario": "Gonzaloaravena",
+    "fecha_generacion": "12-03-2025 14:33:09"
+  }
+]

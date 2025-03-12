@@ -7,7 +7,10 @@ import traceback
 from utils.certificate_utils import generate_certificate
 from utils.file_operations import consolidar_hojas_excel
 
-# Rutas para los archivos persistentes generados en la página 2
+# Importar funciones de gestión de usuarios
+from user_management import get_user_data_path
+
+# Rutas para los archivos persistentes - Serán modificadas en auth_app.py para cada usuario
 GASTOS_FILE = "data/control_de_gasto_de_licitaciones.xlsx"
 ORDENES_FILE = "data/control_de_ordenes_de_compra.xlsx"
 CONTROL_SUMMARY_FILE = "data/resumen_control_licitaciones.json"
@@ -105,7 +108,9 @@ def registrar_certificado(datos_certificado):
     """
     try:
         # Crear carpeta data si no existe
-        os.makedirs("data", exist_ok=True)
+        if "user" in st.session_state and st.session_state.user:
+            user_data_path = get_user_data_path(st.session_state.user["username"])
+            os.makedirs(user_data_path, exist_ok=True)
         
         # Cargar registro existente o crear uno nuevo
         if os.path.exists(CERTIFICADOS_LOG_FILE):
@@ -116,6 +121,10 @@ def registrar_certificado(datos_certificado):
         
         # Añadir fecha de generación
         datos_certificado["fecha_generacion"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        
+        # Añadir información del usuario
+        if "user" in st.session_state and st.session_state.user:
+            datos_certificado["usuario"] = st.session_state.user["username"]
         
         # Convertir cualquier objeto de pandas a tipos Python nativos
         for key, value in datos_certificado.items():
@@ -284,6 +293,11 @@ def calcular_saldos_licitacion(licitacion, presupuesto_total, monto_actual):
     # Obtener certificados previos
     certificados_previos = obtener_certificados_licitacion(licitacion)
     
+    # Filtrar certificados del usuario actual si existe
+    if "user" in st.session_state and st.session_state.user:
+        user = st.session_state.user["username"]
+        certificados_previos = [cert for cert in certificados_previos if cert.get("usuario") == user]
+    
     # Sumar todos los montos de certificados previos
     monto_certificados_previos = sum(cert.get("monto", 0) for cert in certificados_previos)
     
@@ -299,12 +313,26 @@ def calcular_saldos_licitacion(licitacion, presupuesto_total, monto_actual):
     return saldo_anterior, monto_ejecutado, saldo_disponible
 
 def pagina_3():
+    st.title("Página 3: Generación de Certificados de Cumplimiento")
+    
+    # Verificar si hay un usuario autenticado
+    if "user" not in st.session_state or not st.session_state.user:
+        st.error("Debes iniciar sesión para acceder a esta funcionalidad.")
+        return
+    
+    # Obtener ID del usuario actual
+    current_user = st.session_state.user["username"]
+    
+    # Obtener ruta de datos del usuario
+    user_data_path = get_user_data_path(current_user)
+    
+    # Mostrar información del usuario
+    st.info(f"Usuario actual: {current_user} ({st.session_state.user['role']})")
+    
     # Almacenar el certificado en la sesión para descargarlo más tarde
     if 'certificado' not in st.session_state:
         st.session_state.certificado = None
         st.session_state.nombre_archivo_certificado = None
-
-    st.title("Página 3: Generación de Certificados de Cumplimiento")
     
     # Crear contenedores para organizar la interfaz
     verificacion_container = st.container()
@@ -375,6 +403,15 @@ def pagina_3():
             (ordenes_licitacion["certificado"] != "SÍ")
         ]
         
+        # Filtrar órdenes por el usuario actual si hay una columna de usuario
+        if "usuario" in ordenes_licitacion.columns:
+            usuario_filtrado = ordenes_elegibles["usuario"] == current_user
+            todas_ordenes = len(ordenes_elegibles)
+            ordenes_elegibles = ordenes_elegibles[usuario_filtrado]
+            
+            if todas_ordenes > 0 and len(ordenes_elegibles) == 0:
+                st.warning("No tienes órdenes asignadas en esta licitación.")
+        
         if ordenes_elegibles.empty:
             st.warning("No hay órdenes elegibles para certificación en esta licitación. Todas las órdenes ya tienen certificado o no están en estado aceptado.")
             return
@@ -425,7 +462,6 @@ def pagina_3():
         
         # Obtener los datos de la orden seleccionada directamente a partir del índice
         selected_order = ordenes_elegibles.iloc[selected_index].to_dict()
-        # FIN DE LA CORRECCIÓN
         
         # Mostrar detalles de la orden seleccionada
         st.subheader("Detalles de la Orden Seleccionada")
@@ -602,7 +638,8 @@ def pagina_3():
                                 "es_prorroga": es_prorroga,
                                 "funcionario": nombre_funcionario,
                                 "cargo_funcionario": cargo_funcionario,
-                                "licitacion": selected_licitacion
+                                "licitacion": selected_licitacion,
+                                "usuario": current_user  # Agregar usuario que generó el certificado
                             }
                             
                             registro_exitoso = registrar_certificado(datos_certificado)

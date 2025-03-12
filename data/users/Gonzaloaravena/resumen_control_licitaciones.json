@@ -1,0 +1,44 @@
+[
+  {
+    "numero_licitacion": "1057461-5-LE23",
+    "nombre": "MANTENCIÓN PREVENTIVA Y CORRECTIVA DE EQUIPOS MÉDICOS CRÍTICOS PARA HOSPITAL CAUQUENES",
+    "fecha_inicio": "2023-05-09",
+    "fecha_final": "2025-03-31",
+    "presupuesto_total": 62450000.0,
+    "presupuesto_ejecutado": 34771589.0,
+    "presupuesto_comprometido": 34771589.0,
+    "presupuesto_certificado": 0.0,
+    "presupuesto_disponible": 27678411.0,
+    "porcentaje_ejecucion": 55.679085668534825,
+    "porcentaje_certificacion": 0.0,
+    "estado": "Activa"
+  },
+  {
+    "numero_licitacion": "1057461-41-LE23",
+    "nombre": "REPUESTOS Y ACCESORIOS PARA EQUIPOS MÉDICOS",
+    "fecha_inicio": "2023-10-12",
+    "fecha_final": "2025-09-30",
+    "presupuesto_total": 62450000.0,
+    "presupuesto_ejecutado": 0,
+    "presupuesto_comprometido": 0,
+    "presupuesto_certificado": 0,
+    "presupuesto_disponible": 62450000.0,
+    "porcentaje_ejecucion": 0,
+    "porcentaje_certificacion": 0,
+    "estado": "Activa"
+  },
+  {
+    "numero_licitacion": "1057461-6-LE23",
+    "nombre": "MANTENCIÓN PREVENTIVA Y CORRECTIVA DE EQUIPOS MÉDICOS NO CRÍTICOS PARA HOSPITAL CAUQUENES",
+    "fecha_inicio": "2023-04-19",
+    "fecha_final": "2025-03-31",
+    "presupuesto_total": 62450000.0,
+    "presupuesto_ejecutado": 19067855.0,
+    "presupuesto_comprometido": 19067855.0,
+    "presupuesto_certificado": 0.0,
+    "presupuesto_disponible": 43382145.0,
+    "porcentaje_ejecucion": 30.53299439551641,
+    "porcentaje_certificacion": 0.0,
+    "estado": "Activa"
+  }
+]

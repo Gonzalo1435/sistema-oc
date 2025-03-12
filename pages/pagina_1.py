@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-from utils.pdf_extraction import extract_data_from_pdf
+import os
 import hashlib
+from utils.pdf_extraction import extract_data_from_pdf
+
+# Importar funciones de gestión de usuarios
+from user_management import get_user_data_path
 
 
 def generate_file_hash(file):
@@ -28,11 +32,28 @@ def format_rut(rut):
 def pagina_1():
     st.title("Página 1: Subida de PDFs y Extracción de Datos")
 
+    # Verificar si hay un usuario autenticado
+    if "user" not in st.session_state or not st.session_state.user:
+        st.error("Debes iniciar sesión para acceder a esta funcionalidad.")
+        return
+    
+    # Obtener ID del usuario actual
+    current_user = st.session_state.user["username"]
+    
+    # Obtener ruta de datos del usuario
+    user_data_path = get_user_data_path(current_user)
+    
+    # Mostrar información del usuario
+    st.info(f"Usuario actual: {current_user} ({st.session_state.user['role']})")
+
     st.write("""
     En esta página puedes subir archivos PDF de órdenes de compra, 
-    extraer los datos relevantes y guardarlos en un archivo Excel.
+    extraer los datos relevantes y guardarlos en tu perfil de usuario.
     """)
 
+    # Ruta del archivo de órdenes específica para este usuario
+    user_orders_file = os.path.join(user_data_path, "ordenes_de_compra.xlsx")
+    
     # Subida de archivos PDF
     uploaded_files = st.file_uploader(
         "Sube uno o más archivos PDF",
@@ -57,11 +78,25 @@ def pagina_1():
 
         # Inicializar conjunto para rastrear órdenes de compra procesadas
         processed_orders = set()
+        
+        # Cargar órdenes existentes para evitar duplicados
+        if os.path.exists(user_orders_file):
+            try:
+                existing_orders = pd.read_excel(user_orders_file)
+                if "Orden de Compra" in existing_orders.columns:
+                    # Añadir al conjunto de órdenes procesadas
+                    for order in existing_orders["Orden de Compra"]:
+                        if order and not pd.isna(order):
+                            processed_orders.add(f"{current_user}_{order}")
+                    st.info(f"Se encontraron {len(processed_orders)} órdenes de compra existentes.")
+            except Exception as e:
+                st.warning(f"Error al cargar órdenes existentes: {e}")
 
         # Extraer datos de los PDFs
         extracted_data = []
         for uploaded_file in unique_files_list:
-            pdf_data = extract_data_from_pdf(uploaded_file, processed_orders)  # Pasar processed_orders aquí
+            # Pasar el ID del usuario para evitar duplicados entre usuarios diferentes
+            pdf_data = extract_data_from_pdf(uploaded_file, processed_orders, current_user)
             if pdf_data:
                 # Formatear RUT
                 if "RUT Proveedor" in pdf_data:
@@ -79,11 +114,42 @@ def pagina_1():
             towrite = BytesIO()
             df.to_excel(towrite, index=False, engine='openpyxl')
             towrite.seek(0)
-            st.download_button(
-                label="📥 Descargar Excel con Datos Extraídos",
-                data=towrite,
-                file_name="ordenes_de_compra.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            
+            # Opción para descargar
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.download_button(
+                    label="📥 Descargar Excel con Datos Extraídos",
+                    data=towrite,
+                    file_name="ordenes_de_compra.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            
+            # Opción para guardar en la carpeta del usuario
+            with col2:
+                if st.button("💾 Guardar en Mi Perfil", type="primary"):
+                    try:
+                        # Crear directorio de usuario si no existe
+                        os.makedirs(user_data_path, exist_ok=True)
+                        
+                        # Verificar si existe un archivo previo para concatenar
+                        if os.path.exists(user_orders_file):
+                            # Cargar archivo existente
+                            existing_df = pd.read_excel(user_orders_file)
+                            
+                            # Concatenar con los nuevos datos
+                            combined_df = pd.concat([existing_df, df], ignore_index=True)
+                            
+                            # Guardar archivo combinado
+                            combined_df.to_excel(user_orders_file, index=False, engine='openpyxl')
+                            st.success(f"✅ Datos añadidos a tu archivo existente: {user_orders_file}")
+                        else:
+                            # Guardar nuevo archivo
+                            df.to_excel(user_orders_file, index=False, engine='openpyxl')
+                            st.success(f"✅ Datos guardados en tu perfil: {user_orders_file}")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error al guardar el archivo: {e}")
         else:
             st.error("No se pudieron extraer datos de los PDFs o todas las órdenes de compra estaban duplicadas.")

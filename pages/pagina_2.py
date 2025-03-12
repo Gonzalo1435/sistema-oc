@@ -11,7 +11,10 @@ from utils.file_operations import (
     consolidar_hojas_excel
 )
 
-# Archivos de salida
+# Importar funciones de gestión de usuarios
+from user_management import get_user_data_path
+
+# Archivos de salida - Estas rutas serán modificadas en auth_app.py para cada usuario
 PERSISTENT_EXPENSES_FILE = "data/control_de_gasto_de_licitaciones.xlsx"
 PERSISTENT_ORDERS_FILE = "data/control_de_ordenes_de_compra.xlsx"
 CONTROL_SUMMARY_FILE = "data/resumen_control_licitaciones.json"
@@ -200,8 +203,10 @@ def generar_control_de_ordenes(ordenes_df):
     Genera el archivo `control_de_ordenes_de_compra.xlsx` con las órdenes separadas en hojas,
     cada una nombrada por el número de licitación.
     """
-    # Asegurar que la carpeta data existe
-    os.makedirs("data", exist_ok=True)
+    # Asegurar que el directorio para el usuario actual existe
+    if "user" in st.session_state and st.session_state.user:
+        user_data_path = get_user_data_path(st.session_state.user["username"])
+        os.makedirs(user_data_path, exist_ok=True)
     
     # Asegurar que la columna 'numero_licitacion' existe
     if 'numero_licitacion' not in ordenes_df.columns:
@@ -222,8 +227,10 @@ def generar_control_de_gasto(controles):
     Genera el archivo `control_de_gasto_de_licitaciones.xlsx` y el resumen en JSON
     basado en el control avanzado de gastos.
     """
-    # Asegurar que la carpeta data existe
-    os.makedirs("data", exist_ok=True)
+    # Asegurar que el directorio para el usuario actual existe
+    if "user" in st.session_state and st.session_state.user:
+        user_data_path = get_user_data_path(st.session_state.user["username"])
+        os.makedirs(user_data_path, exist_ok=True)
     
     # Verificar si hay controles
     if not controles:
@@ -282,6 +289,20 @@ def generar_control_de_gasto(controles):
 
 def pagina_2():
     st.title("Página 2: Control de Órdenes y Gasto de Licitaciones")
+    
+    # Verificar si hay un usuario autenticado
+    if "user" not in st.session_state or not st.session_state.user:
+        st.error("Debes iniciar sesión para acceder a esta funcionalidad.")
+        return
+    
+    # Obtener ID del usuario actual
+    current_user = st.session_state.user["username"]
+    
+    # Obtener ruta de datos del usuario
+    user_data_path = get_user_data_path(current_user)
+    
+    # Mostrar información del usuario
+    st.info(f"Usuario actual: {current_user} ({st.session_state.user['role']})")
     
     # Crear contenedores para organizar la interfaz
     upload_container = st.container()
@@ -410,6 +431,10 @@ def pagina_2():
                         # Asegurar que existe la columna certificado
                         if "certificado" not in ordenes_df.columns:
                             ordenes_df["certificado"] = "NO"
+                        
+                        # Añadir columna de usuario si no existe
+                        if "usuario" not in ordenes_df.columns:
+                            ordenes_df["usuario"] = current_user
                         
                         # Generar control avanzado de gastos
                         controles = control_avanzado_de_gastos(licitaciones_df, ordenes_df)
